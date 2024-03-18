@@ -2,18 +2,25 @@ import bz2
 import functools
 import numpy as np
 
+from src.projection import CoordinateService
+
+N_CAMERA_PARAMS = 9
+
 
 class Dataset:
 
     def __init__(self):
+        self.problem_name = None
         self.camera_params = None
-        self.points_3d = None
-        self.camera_indices = None
-        self.point_indices = None
         self.points_2d = None
+        self.points_3d = None
+
+        self.points_3d_indices = None
+        self.camera_indices = None
+
         self.n_cameras = 0
-        self.n_points = 0
-        self.n_observations = 0
+        self.n_points_3d = 0
+        self.n_observations_2d = 0
 
     def get_camera_params_from(self, camera_number):
         return self.camera_params[camera_number]
@@ -29,12 +36,13 @@ class Dataset:
             else functools.partial(open, mode='r')
         )
         with open_file(file_path) as file:
+            self.problem_name = file_path
             n_cameras, n_points, n_observations = map(
                 int, file.readline().split())
 
             self.n_cameras = n_cameras
-            self.n_points = n_points
-            self.n_observations = n_observations
+            self.n_points_3d = n_points
+            self.n_observations_2d = n_observations
 
             camera_indices = np.empty(n_observations, dtype=int)
             point_indices = np.empty(n_observations, dtype=int)
@@ -47,11 +55,11 @@ class Dataset:
                 points_2d[i] = [float(x), float(y)]
 
             self.camera_indices = camera_indices
-            self.point_indices = points_2d
+            self.points_3d_indices = points_2d
             self.points_2d = points_2d
 
-            camera_params = np.empty(n_cameras * 9)
-            for i in range(n_cameras * 9):
+            camera_params = np.empty(n_cameras * N_CAMERA_PARAMS)
+            for i in range(n_cameras * N_CAMERA_PARAMS):
                 camera_params[i] = float(file.readline())
             camera_params = camera_params.reshape((n_cameras, -1))
 
@@ -65,3 +73,21 @@ class Dataset:
             self.points_3d = points_3d
 
         return camera_params, points_3d, camera_indices, point_indices, points_2d, n_cameras, n_points, n_observations
+
+    def generate(self, n_cameras: int = 1, n_points_3d: int = 10, n_observations_2d: int = 10):
+        self.n_cameras = n_cameras
+        self.n_points_3d = n_points_3d
+        self.n_observations_2d = n_observations_2d
+        self.problem_name = "Random dataset: {} cameras, {} 3d points, {} 2d observations".format(self.n_cameras, self.n_points_3d, self.n_observations_2d)
+
+        self.points_3d = np.random.rand(self.n_points_3d, 3)  # Генерация 3D точек с равномерным распределением
+        self.camera_params = np.random.rand(self.n_cameras, N_CAMERA_PARAMS)
+        self.camera_indices = np.random.randint(0, self.n_cameras, self.n_observations_2d, dtype=int)
+        self.points_3d_indices = np.random.randint(0, self.n_points_3d, self.n_observations_2d, dtype=int)
+
+        service = CoordinateService()
+        self.points_2d = np.empty((self.n_observations_2d, 2))
+        for i in range(0, self.n_observations_2d):
+            camera_index = self.camera_indices[i]
+            camera_param = self.camera_params[camera_index:camera_index + 1, :]
+            self.points_2d[camera_index, :] = service.get_forward_projection(camera_param, self.points_3d[self.points_3d_indices[i]])
