@@ -4,6 +4,92 @@ from accessify import protected
 
 class CoordinateService:
 
+    def get_backward_projection(self, camera_params, x_2d):
+        ray_3d = np.zeros((x_2d, 6))
+        ray_3d[:, :3] = camera_params[:, 3:6]
+        # ray_3d[:, 3:] =
+        r = 1  # Without distortion, it equals to 1
+        f = camera_params[:, 6]
+        ray_3d /= (r * f)[:, np.newaxis]
+        # TODO
+
+        return ray_3d
+
+    def transform_to_intersecting_planes(self, ray_2point):
+        N = ray_2point.shape[0]
+
+        point1 = ray_2point[3:]
+        random_offset = np.zeros(3)
+        random_offset[0] = 1
+        point3 = point1 + random_offset
+
+        point2 = ray_2point[:3]
+        random_offset = np.zeros(3)
+        random_offset[1] = 1
+        point4 = point2 + random_offset
+
+        # векторы направления прямой
+        AB = point2 - point1
+        AC = point3 - point1
+
+        # вектор нормали к обеим плоскостям
+        normal1 = np.cross(AB, AC)
+        D1 = -np.dot(normal1, point1)
+        # Выводим уравнение плоскости
+        print(f"Уравнение плоскости: {normal1[0]}*x + {normal1[1]}*y + {normal1[2]}*z + {D1} = 0")
+
+        # векторы направления прямой
+        AB = point2 - point1
+        AD = point4 - point1
+
+        # вектор нормали к обеим плоскостям
+        normal2 = np.cross(AB, AD)
+        D2 = -np.dot(normal1, point1)
+        # Выводим уравнение плоскости
+        print(f"Уравнение плоскости: {normal2[0]}*x + {normal2[1]}*y + {normal2[2]}*z + {D2} = 0")
+
+        ray_2plane = np.zeros(8)
+        ray_2plane[:3] = normal1
+        ray_2plane[3] = D1
+
+        ray_2plane[4:7] = normal2
+        ray_2plane[7] = D2
+
+        return ray_2plane
+
+    def to_plane(self, pointA, pointB, pointC, debug_mode = False):
+        AB = pointB - pointA
+        AC = pointC - pointA
+
+        normal = np.cross(AB, AC)
+        D = -np.dot(normal, pointA)
+
+        plane = np.zeros((1, 4))
+        plane[:,:3] = normal/normal[0]
+        plane[0,3] = D/normal[0]
+        # return normal[0]/normal[0], normal[1]/normal[0], normal[2]/normal[0], D/normal[0], \
+        return plane
+
+    def to_plane2(self, point1, point2):
+        # Найдите вектор, перпендикулярный обеим точкам
+        v = np.cross(point2 - point1, np.array([1, 0, 0]))
+
+        # Найдите две точки на первой плоскости
+        point3 = point1 + v
+        point4 = point2 + v
+
+        # Найдите две точки на второй плоскости
+        point5 = point1 - v
+        point6 = point2 - v
+
+        # Рассчитайте уравнения плоскостей
+        eq1 = np.cross(point2 - point1, point3 - point1)
+        eq2 = np.cross(point2 - point1, point5 - point1)
+
+        # Распечатайте уравнения плоскостей
+        print(eq1)
+        print(eq2)
+
     def get_forward_projection(self, camera_params, x_3d):
         """Convert 3-D points to 2-D by projecting onto images.
 

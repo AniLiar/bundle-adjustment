@@ -22,8 +22,33 @@ class Dataset:
         self.n_points_3d = 0
         self.n_observations_2d = 0
 
+    def set_camera_poses(self, camera_poses):
+        assert self.n_cameras == camera_poses.shape[0], "Camera_poses param should be the same dim of n_cameras"
+        self.camera_params[:, 3:6] = camera_poses
+
+    def set_camera_rotations(self, camera_rotation):
+        assert self.n_cameras == camera_rotation.shape[0], "Camera_rotation param should be the same dim of n_cameras"
+        self.camera_params[:, :3] = camera_rotation
+
+    def set_camera_distortion(self, distortion_k1, distortion_k2):
+        assert self.n_cameras == distortion_k1.shape[0] & self.n_cameras == distortion_k2.shape[0], "Distortions k1, k2 params should be the same dim of n_cameras"
+        self.camera_params[:, 7:8] = distortion_k1
+        self.camera_params[:, 8:9] = distortion_k2
+
+    def set_camera_focal_length(self, focal_length):
+        assert self.n_cameras == focal_length.shape[0], "Focal_length param should be the same dim of n_cameras"
+        self.camera_params[:, 6:7] = focal_length
+
+    def set_camera_params(self, camera_params):
+        self.n_cameras = camera_params.shape[0]
+        self.camera_params = camera_params
+
+
     def get_camera_params_from(self, camera_number):
         return self.camera_params[camera_number]
+
+    def get_camera_pose_from(self, camera_number):
+        return self.camera_params[camera_number,3:6]
 
     def read_from_file(self, file_path: str, bz2_encoding: bool = True):
         """Read BAL file contents
@@ -75,6 +100,7 @@ class Dataset:
         return camera_params, points_3d, camera_indices, point_indices, points_2d, n_cameras, n_points, n_observations
 
     def generate(self, n_cameras: int = 1, n_points_3d: int = 10, n_observations_2d: int = 10):
+        assert n_observations_2d / n_cameras < n_points_3d, "n_observations_2d param should be less than n_points_3d * n_cameras"
         self.n_cameras = n_cameras
         self.n_points_3d = n_points_3d
         self.n_observations_2d = n_observations_2d
@@ -91,3 +117,27 @@ class Dataset:
             camera_index = self.camera_indices[i]
             camera_param = self.camera_params[camera_index:camera_index + 1, :]
             self.points_2d[camera_index, :] = service.get_forward_projection(camera_param, self.points_3d[self.points_3d_indices[i]])
+
+    def generate_with_default_params(self, n_cameras: int = 1):
+        self.n_cameras = n_cameras
+        self.set_camera_params(np.zeros((self.n_cameras, N_CAMERA_PARAMS)))
+
+        camera_pose = np.array([[0, 0, 0]])
+        self.set_camera_poses(camera_pose)
+
+        rotation = np.array([[0, 0, 0]])
+        self.set_camera_rotations(rotation)
+
+        self.set_camera_focal_length(np.array([[1]]))
+        self.set_camera_distortion(np.array([[0]]), np.array([[0]]))
+
+        self.n_points_3d = 1
+        self.n_observations_2d = 1
+        self.points_3d = np.array([[0, 0, 1]])
+        self.points_3d_indices = np.array([0])
+        self.camera_indices = np.array([0])
+
+        service = CoordinateService()
+        self.points_2d = service.get_forward_projection(self.camera_params, self.points_3d)
+        self.problem_name = "Synthetic dataset: {} cameras, {} 3d points, {} 2d observations".format(self.n_cameras, self.n_points_3d, self.n_observations_2d)
+        print("here")

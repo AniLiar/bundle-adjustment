@@ -39,3 +39,15 @@ class TestDataset(TestCase):
         visualisation_service.show_point_2d()
         visualisation_service.show_point_3d()
         visualisation_service.show_camera_position()
+
+    def test_generate_with_default_values(self):
+        dataset = Dataset()
+        dataset.generate_with_default_params()
+        visualisation_service = DatasetVisualisationService(dataset)
+        visualisation_service.show_point_2d()
+        visualisation_service.show_point_3d()
+        visualisation_service.show_camera_position()
+        visualisation_service.show_point_3d_and_camera_position()
+        print("camera position = {}".format(dataset.get_camera_pose_from(0)))
+        print("3D point = {}".format(dataset.points_3d))
+

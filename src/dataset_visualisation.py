@@ -26,7 +26,8 @@ class DatasetVisualisationService:
         for i in range(len(self.__dataset.camera_indices)):
             point = self.__dataset.points_2d[i][:]
             print(point)
-            ax.scatter(point[0], point[1], color=colors[self.__dataset.camera_indices[i]])
+            camera_ind = self.__dataset.camera_indices[i]
+            ax.scatter(point[0], point[1], color=colors[camera_ind])
 
         plt.title("Problem {}: \n2D points of all images (cameras)".format(self.__dataset.problem_name))
         plt.xlabel("x of 2D point")
@@ -58,4 +59,22 @@ class DatasetVisualisationService:
         plt.xlabel("x of 3D point")
         plt.ylabel("y of 3D point")
         # plt.zlabel("z of 3D point")
+        plt.show()
+
+    def show_point_3d_and_camera_position(self):
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+
+        for point_3d in self.__dataset.points_3d:
+            print(point_3d)
+            ax.scatter(*point_3d, label='3D point')
+
+        for pose in self.__dataset.camera_params[:, 3:6]:
+            ax.scatter(*pose, s=50., marker="s", label='camera')
+
+        plt.title("Problem {}: \nCamera poses and 3D points of all images (cameras)".format(self.__dataset.problem_name))
+        plt.xlabel("x of 3D point")
+        plt.ylabel("y of 3D point")
+        # plt.zlabel("z of 3D point")
+        plt.legend()
         plt.show()
